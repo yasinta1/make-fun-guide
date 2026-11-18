@@ -1,0 +1,38 @@
+name: Resize screenshot
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  resize:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Python 3
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.x'
+      - name: Install Pillow
+        run: pip install pillow
+      - name: Resize screenshot
+        run: |
+          python - <<'EOF'
+          from PIL import Image
+          img = Image.open('screenshot.png')
+          w, h = img.size
+          new_w = 1880
+          new_h = round(h * new_w / w)
+          img = img.resize((new_w, new_h), Image.LANCZOS)
+          img.save('screenshot.png', optimize=True)
+          print(f'Resized {w}x{h} -> {new_w}x{new_h}')
+          EOF
+      - name: Commit and push screenshot
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add screenshot.png
+          git diff --cached --quiet || git commit -m "Resize screenshot.png under the 16M pixel cap"
+          git push
