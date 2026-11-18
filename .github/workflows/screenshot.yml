@@ -1,0 +1,42 @@
+name: Screenshot
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  screenshot:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install Playwright and Chromium
+        run: |
+          npm init -y
+          npm install playwright
+          npx playwright install --with-deps chromium
+      - name: Take full-page screenshot
+        run: |
+          cat > screenshot.mjs <<'EOF'
+          import { chromium } from 'playwright';
+          const browser = await chromium.launch();
+          const page = await browser.newPage({ viewport: { width: 1920, height: 1080 } });
+          await page.goto('https://github.com/yasinta1/make-fun-guide', { waitUntil: 'networkidle' });
+          await page.waitForSelector('article.markdown-body', { timeout: 60000 });
+          await page.waitForTimeout(5000);
+          await page.screenshot({ path: 'screenshot.png', fullPage: true });
+          await browser.close();
+          EOF
+          node screenshot.mjs
+      - name: Commit and push screenshot
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add screenshot.png
+          git diff --cached --quiet || git commit -m "Update screenshot.png for expanded guide"
+          git push
